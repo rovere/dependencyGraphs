@@ -1,0 +1,7 @@
+digraph RECO { graph [label = "HGCalRecHit", labelloc=top];
+64[label=HGCalRecHit, tooltip=HGCalRecHitProducer, color=black];
+65[label="HGCalUncalibRecHit\nHGCalUncalibRecHitProducer", tooltip=HGCalUncalibRecHitProducer, color=black, shape=box];
+64 -> 65;
+441[label="hgcalDigis\nHGCalRawToDigiFake", tooltip=HGCalRawToDigiFake, color=black, shape=box];
+65 -> 441;
+}

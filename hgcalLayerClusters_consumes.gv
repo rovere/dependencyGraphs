@@ -1,0 +1,9 @@
+digraph RECO { graph [label = "hgcalLayerClusters", labelloc=top];
+442[label=hgcalLayerClusters, tooltip=HGCalLayerClusterProducer, color=black];
+64[label=HGCalRecHit, tooltip=HGCalRecHitProducer, color=black];
+442 -> 64;
+65[label=HGCalUncalibRecHit, tooltip=HGCalUncalibRecHitProducer, color=black];
+64 -> 65;
+441[label=hgcalDigis, tooltip=HGCalRawToDigiFake, color=black];
+65 -> 441;
+}

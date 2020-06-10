@@ -1,0 +1,23 @@
+digraph RECO { graph [label = "HGCalRecHit", labelloc=top];
+64[label=HGCalRecHit, tooltip=HGCalRecHitProducer, color=black];
+56[label="FEVTDEBUGHLToutput\nPoolOutputModule", tooltip=PoolOutputModule, color=black, shape=box];
+64 -> 56;
+319[label="ecalDrivenElectronSeedsFromMultiCl\nElectronSeedProducer", tooltip=ElectronSeedProducer, color=black, shape=box];
+64 -> 319;
+1583[label="uncleanedOnlyElectronSeeds\nElectronSeedProducer", tooltip=ElectronSeedProducer, color=black, shape=box];
+64 -> 1583;
+552[label="logErrorHarvester\nLogErrorHarvester", tooltip=LogErrorHarvester, color=black, shape=box];
+64 -> 552;
+442[label="hgcalLayerClusters\nHGCalLayerClusterProducer", tooltip=HGCalLayerClusterProducer, color=black, shape=box];
+64 -> 442;
+804[label="particleFlowRecHitHGC\nPFRecHitProducer", tooltip=PFRecHitProducer, color=black, shape=box];
+64 -> 804;
+318[label="ecalDrivenElectronSeeds\nElectronSeedProducer", tooltip=ElectronSeedProducer, color=black, shape=box];
+64 -> 318;
+439[label="hgcElectronID\nHGCalElectronIDValueMapProducer", tooltip=HGCalElectronIDValueMapProducer, color=black, shape=box];
+64 -> 439;
+440[label="hgcPhotonID\nHGCalPhotonIDValueMapProducer", tooltip=HGCalPhotonIDValueMapProducer, color=black, shape=box];
+64 -> 440;
+443[label="hgcalMultiClusters\nHGCalMultiClusterProducer", tooltip=HGCalMultiClusterProducer, color=black, shape=box];
+64 -> 443;
+}
