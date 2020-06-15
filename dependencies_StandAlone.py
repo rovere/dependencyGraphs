@@ -3,12 +3,72 @@
 import argparse
 import re
 import subprocess, sys, os
-from pythonds import Queue, Graph, Vertex, bfs
+from pythonds import Queue, Graph, Vertex
 
 vertices = []
 consumes = Graph()
 is_consumed = Graph()
 blacklisted_modules_id = []
+
+class MyVertex(Vertex):
+    WHITE = 0
+    GRAY = 1
+    BLACK = 2
+    def __init__(self,num):
+        self.color = MyVertex.WHITE
+        super().__init__(num)
+
+def bfs(graph, start, debug=False):
+      """
+      Breadth First Search (BFS)
+       Given a node in a graph, BFS will find all nodes connected to this
+      node. The distance between nodes is measured in HOPS. It will find
+      all nodes at distance 'k' before finding any nodes at a further
+      distance. It will return the full list of connected nodes.
+       PseudoCode:
+       BFS(G,s)
+       for each vertex u in V[G] - {s} do
+        state[u] = WHITE
+        predecessor[u] = nil
+      state[s] = GRAY
+      predecessor[s] = nil
+      QUEUE = {s}
+      while QUEUE != 0 do
+        u = dequeue[Q]
+        process vertex u as desired
+        for each v in Adjacent[u] do
+          process edge (u,v) as desired (e.g. distance[v] = distance[u] + 1)
+          if state[v] = WHITE then
+            state[v] = GRAY
+            predecessor[v] = u
+            enqueue[Q,v]
+        state[u] = BLACK
+      """
+      result = []
+      for v in graph.getVertices():
+          a_vertex = graph.getVertex(v)
+          a_vertex.__classname__ = 'MyVertex'
+          a_vertex.setColor(MyVertex.WHITE)
+          a_vertex.setDistance(0)
+          a_vertex.setPred(None)
+
+      start.setDistance(0)
+      start.setPred(None)
+      vertex_queue = Queue()
+      vertex_queue.enqueue(start)
+      while (vertex_queue.size() > 0):
+          current_vertex = vertex_queue.dequeue()
+          result.append(current_vertex)
+          if debug:
+              print(current_vertex)
+          for v in current_vertex.getConnections():
+              if v.getColor() == MyVertex.WHITE:
+                  v.setColor(MyVertex.GRAY)
+                  v.setDistance(current_vertex.getDistance() + 1)
+                  v.setPred(current_vertex)
+                  vertex_queue.enqueue(v)
+          current_vertex.setColor(MyVertex.BLACK)
+      return result
 
 def createGraph(args):
     blacklist_modules = []
