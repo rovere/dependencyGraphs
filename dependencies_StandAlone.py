@@ -4,6 +4,7 @@ import argparse
 import re
 import subprocess, sys, os
 from pythonds import Queue, Graph, Vertex
+from colorama import Fore, Style
 
 vertices = []
 consumes = Graph()
@@ -11,9 +12,9 @@ is_consumed = Graph()
 blacklisted_modules_id = []
 
 class MyVertex(Vertex):
-    WHITE = 0
-    GRAY = 1
-    BLACK = 2
+    WHITE = 'white'
+    GRAY = 'gray'
+    BLACK = 'black'
     def __init__(self,num):
         self.color = MyVertex.WHITE
         super().__init__(num)
@@ -21,7 +22,7 @@ class MyVertex(Vertex):
 def bfs(graph, start, debug=False):
       """
       Breadth First Search (BFS)
-       Given a node in a graph, BFS will find all nodes connected to this
+      Given a node in a graph, BFS will find all nodes connected to this
       node. The distance between nodes is measured in HOPS. It will find
       all nodes at distance 'k' before finding any nodes at a further
       distance. It will return the full list of connected nodes.
@@ -80,57 +81,79 @@ def createGraph(args):
         blacklist_modules.extend(lines)
 
     with open('%s' % args.filename, 'r') as f:
-        for line in f:
-            m = re.match('(\d+).*label=(\w+),.*tooltip=(\w+)', line)
-            if m:
-                vertices.append(Vertex(int(m.group(1))))
-                vertices[-1].label = m.group(2)
-                vertices[-1].tooltip = m.group(3)
+        for linenum, line in enumerate(f):
+            m_v = re.match('(\d+).*label=(\w+),.*tooltip=(\w+)', line)
+            m_e = re.match('(\d+) -> (\d+)(\[.*\])*;', line)
+            if m_v:
+                while (len(vertices) < int(m_v.group(1))):
+                    if args.debug:
+                        print(Fore.RED + Style.BRIGHT + "Adding missing Vtx {}".format(len(vertices)))
+                    vertices.append(Vertex(-1))
+                    vertices[-1].label = "FAKE_VTX"
+                if args.debug:
+                    print(Fore.GREEN + "Adding vertex {}".format(m_v.group(1)))
+                vertices.append(Vertex(int(m_v.group(1))))
+                vertices[-1].label = m_v.group(2)
+                vertices[-1].tooltip = m_v.group(3)
                 vertices[-1].linecolor = 'black'
-                if m.group(2) in blacklist_modules:
-                    blacklisted_modules_id.append(int(m.group(1)))
+                if m_v.group(2) in blacklist_modules:
+                    blacklisted_modules_id.append(int(m_v.group(1)))
                     vertices[-1].linecolor = 'red'
-            m = re.match('(\d+) -> (\d+);', line)
-            if m:
-                if not int(m.group(1)) in blacklisted_modules_id:
-                    consumes.addEdge(int(m.group(1)), int(m.group(2)))
-                if not int(m.group(2)) in blacklisted_modules_id:
-                    is_consumed.addEdge(int(m.group(2)), int(m.group(1)))
+            elif m_e:
+                if not int(m_e.group(1)) in blacklisted_modules_id:
+                    consumes.addEdge(int(m_e.group(1)), int(m_e.group(2)))
+                if not int(m_e.group(2)) in blacklisted_modules_id:
+                    is_consumed.addEdge(int(m_e.group(2)), int(m_e.group(1)))
+            else:
+                print(Fore.RED + Style.BRIGHT + "Unknown line [{}]: ".format(linenum)
+                      + Style.RESET_ALL + "{}".format(line.strip()))
 
 def toDotOutput(args, graph, append):
     root_label = args.label
     outputFormat = args.output
-    maxNodes = args.maxNodes
     root_nodes = [v for v in vertices if v.label == root_label]
     assert(len(root_nodes)<=1)
-    print("Generating the '%s' graph..." % append)
+    print(Fore.GREEN + "Generating the {} graph...".format(append) + Style.RESET_ALL)
     nodes = bfs(graph, graph.getVertex(root_nodes[0].getId()))
     filename = args.outputfile
     if filename == '':
         filename = root_label
-    with open('%s_%s.gv' % (filename, append), 'w') as output:
-        used_nodes = []
-        output.write('digraph RECO { graph [label = "%s", labelloc=top];\n' % root_label)
-        for n in nodes:
-            if (maxNodes is not None and len(used_nodes) >= int(maxNodes)):
-                continue
-            index = n.getId()
-            if index not in used_nodes:
-                used_nodes.append(index)
-                output.write('%d[label=%s, tooltip=%s, color=%s];\n' % (index, vertices[index].label, vertices[index].tooltip, vertices[index].linecolor))
-            for child in n.getConnections():
-                if child.getId() not in used_nodes:
-                    used_nodes.append(child.getId())
-                    output.write('%d[label="%s\\n%s", tooltip=%s, color=%s, shape=box];\n' % (child.getId(),
-                                                                  vertices[child.getId()].label,
-                                                                  vertices[child.getId()].tooltip,
-                                                                  vertices[child.getId()].tooltip,
-                                                                  vertices[child.getId()].linecolor))
-                output.write('%d -> %d;\n' % (n.getId(), child.getId()))
 
+    with open('%s_%s.gv' % (filename, append), 'w') as output:
+        output.write('digraph RECO { graph [label = "%s", labelloc=top];\n' % root_label)
+        distances = {}
+        for n in nodes:
+            distances.setdefault(n.getDistance(), list())
+            distances[n.getDistance()].append(n.getId())
+            if args.debug:
+                print(Fore.GREEN + Style.BRIGHT
+                        + "Level {}, node {}".format(n.getDistance(), n.getId())
+                        + Style.RESET_ALL)
+            if n.getDistance() > args.maxBFSDepth:
+                print(Fore.RED + Style.BRIGHT
+                        + "Stopping at BFS level {}".format(args.maxBFSDepth)
+                        + Style.RESET_ALL)
+                continue
+            output.write('%d[label=%s_%d, tooltip=%s, color=%s, shape=box];\n' % (n.getId(),
+                vertices[n.getId()].label,
+                n.getDistance(),
+                vertices[n.getId()].tooltip,
+                vertices[n.getId()].linecolor))
+            # Print connections only if your depth is maxBFSDepth - 1, so that you'll land
+            # still on required modules, otherwise there'll be connections to non-existing nodes.
+            if n.getDistance() < args.maxBFSDepth:
+                for child in n.getConnections():
+                    output.write('%d -> %d;\n' % (n.getId(), child.getId()))
+            if len(n.getConnections()) == 0:
+                print(Fore.YELLOW + Style.BRIGHT +
+                        "Leaf Node level {} name {}".format(n.getDistance(), vertices[n.getId()].label)
+                        + Style.RESET_ALL)
         output.write('}\n')
         print("Graph processed.")
-        print("Analyzed %d nodes." % len(used_nodes))
+        for k in distances.keys():
+            print("Level "
+                    + Fore.GREEN + "{}".format(k) + Style.RESET_ALL
+                    + " has " + Fore.YELLOW + "{}".format(len(distances[k])) + Style.RESET_ALL +" entries")
     try:
         f = open(os.devnull, 'w')
         _ = subprocess.check_call(
@@ -166,6 +189,11 @@ if __name__ == '__main__':
                      default = '',
                      help = 'Label of the python module to use as the main vertex of the Graph.',
                      type = str,
+                     required=True)
+  parser.add_argument('-d', '--debug',
+                     default = False,
+                     action='store_true',
+                     help = 'Enable debugging printouts',
                      required=False)
   parser.add_argument('-o', '--output',
                      default = 'pdf',
@@ -177,10 +205,10 @@ if __name__ == '__main__':
                      help = 'Output filename, w/o extension, to be used. If none given, use the label of the root module.',
                      type = str,
                      required=False)
-  parser.add_argument('-m', '--maxNodes',
-                     default = None,
-                     help = 'Maximum number of nodes to plot (using BFS exploration of the graph).',
-                     type = str,
+  parser.add_argument('-m', '--maxBFSDepth',
+                     help = 'Maximum depth of BFS exploration to plot.',
+                     type = int,
+                     default = sys.maxsize,
                      required=False)
   parser.add_argument('--exclude_from_nodes',
                      nargs='*',
